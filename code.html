@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TxFarmer | Onchain</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+    <style>
+        /* Color Palette & Base Settings */
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #374151;
+            --accent-bg: #ffffff;
+            --accent-text: #000000;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #f9fafb;
+            --surface-color: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-bg: #1e1e1e;
+            --accent-text: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); transition: all 0.3s ease; line-height: 1.5; }
+
+        /* Navbar */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 5%; border-bottom: 1px solid var(--border-color); background-color: var(--surface-color); }
+        .logo { font-size: 1.5rem; font-weight: 800; letter-spacing: -1px; }
+        .controls { display: flex; gap: 1rem; align-items: center; }
+        select, button { padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--surface-color); color: var(--text-main); font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button.primary { background: var(--accent-bg); color: var(--accent-text); border: none; }
+        button:hover, select:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Tabs */
+        .tabs { display: flex; justify-content: center; gap: 2rem; padding: 1.5rem; border-bottom: 1px solid var(--border-color); }
+        .tab { font-weight: 600; color: var(--text-muted); cursor: pointer; padding-bottom: 0.5rem; border-bottom: 2px solid transparent; }
+        .tab.active { color: var(--text-main); border-bottom-color: var(--text-main); }
+        .tab.locked { cursor: not-allowed; opacity: 0.4; position: relative; }
+        .tab.locked::after { content: " (Coming Soon)"; font-size: 0.75rem; }
+
+        /* Main Container */
+        main { max-width: 1200px; margin: 2rem auto; padding: 0 5%; }
+        
+        /* Dashboard / Status */
+        .dashboard { background: var(--surface-color); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+        .stat span { display: block; font-size: 0.875rem; color: var(--text-muted); }
+        .stat strong { font-size: 1.25rem; }
+
+        /* Grid / Cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .card { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+        .card h3 { font-size: 1.25rem; }
+        .card p { font-size: 0.875rem; color: var(--text-muted); flex-grow: 1; }
+        .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .input-group input { padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); outline: none; }
+        .card button { width: 100%; padding: 0.75rem; font-size: 1rem; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 1rem; }
+            .controls { flex-direction: column; width: 100%; }
+            .controls select, .controls button { width: 100%; }
+            .tabs { flex-wrap: wrap; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">TxFarmer</div>
+        <div class="controls">
+            <button id="themeToggle" onclick="toggleTheme()">Light Mode</button>
+            <select id="networkSelect" onchange="switchNetwork()">
+                <option value="base">Base Network</option>
+                <option value="ink">Ink Network</option>
+                <option value="arc">ARC Network</option>
+            </select>
+            <button id="connectBtn" class="primary" onclick="connectWallet()">Connect Wallet</button>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <div class="tab active">Onchain</div>
+        <div class="tab locked" title="Will be added soon">Airdrops</div>
+        <div class="tab locked" title="Will be added soon">Swap</div>
+    </div>
+
+    <main>
+        <div class="dashboard">
+            <div class="stat">
+                <span>Connected Wallet</span>
+                <strong id="walletAddress">Not Connected</strong>
+            </div>
+            <div class="stat">
+                <span>Your XP Balance</span>
+                <strong id="xpBalance">0 XP</strong>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>GM Task</h3>
+                <p>Can be done once a day. Fee applied based on network, rewards 10 XP.</p>
+                <button class="primary" onclick="executeTx('gm')">Say GM</button>
+            </div>
+
+            <div class="card">
+                <h3>GN Task</h3>
+                <p>Can be done once a day. Fee applied based on network, rewards 10 XP.</p>
+                <button class="primary" onclick="executeTx('gn')">Say GN</button>
+            </div>
+
+            <div class="card">
+                <h3>Tx Clicker</h3>
+                <p>Limited to 1 transaction per block. Low fee, rewards 1 XP.</p>
+                <button class="primary" onclick="executeTx('clicker')">Farm Tx</button>
+            </div>
+
+            <div class="card">
+                <h3>Deploy Coin</h3>
+                <p>Create your own ERC20 token. Gives the highest reward (50 XP).</p>
+                <div class="input-group">
+                    <input type="text" id="coinName" placeholder="Token Name (e.g., MyCoin)">
+                    <input type="text" id="coinSymbol" placeholder="Symbol (e.g., MYC)">
+                    <input type="number" id="coinSupply" placeholder="Supply (e.g., 1000000)">
+                </div>
+                <button class="primary" onclick="deployCoin()">Deploy Token</button>
+            </div>
+
+            <div class="card">
+                <h3>Deploy NFT</h3>
+                <p>Create your own NFT collection. Gives the highest reward (50 XP).</p>
+                <div class="input-group">
+                    <input type="text" id="nftName" placeholder="NFT Name (e.g., MyNFT)">
+                    <input type="text" id="nftSymbol" placeholder="Symbol (e.g., MNFT)">
+                </div>
+                <button class="primary" onclick="deployNFT()">Deploy NFT</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- SYSTEM CONFIGURATION ---
+        const NETWORKS = {
+            base: {
+                txFarmer: "0xEAa53Badf68743E7855816008c77a10de727fD20",
+                xp: "0x60218972B63F0AF19ea739bbA4605DF396B7B733",
+                isPayable: true,
+                fees: { gm: "0.00002", gn: "0.00002", deploy: "0.00004", clicker: "0.000003" }
+            },
+            ink: {
+                txFarmer: "0xbAcDe6b052feE001b0F03aa0beAddBd0ecf7B55f",
+                xp: "0xF04BBe5ea6246DAAA5dC24f272659d955Dae1680",
+                isPayable: true,
+                fees: { gm: "0.00002", gn: "0.00002", deploy: "0.00004", clicker: "0.000003" }
+            },
+            arc: {
+                txFarmer: "0x9F19d95F16322827259B82629ad8094036710488",
+                xp: "0x4c11CcD7bc604370Fd710D03CF10F5b0a69c32De",
+                isPayable: false,
+                fees: { gm: "0", gn: "0", deploy: "0", clicker: "0" }
+            }
+        };
+
+        // Minimal ABIs (Only what's needed to save gas and bandwidth)
+        const CORE_ABI = [
+            "function gm() external payable",
+            "function gn() external payable",
+            "function clicker() external payable",
+            "function deploySimpleCoin(string name, string symbol, uint256 initialSupply) external payable",
+            "function deploySimpleNFT(string name, string symbol) external payable"
+        ];
+        const XP_ABI = ["function balanceOf(address account) external view returns (uint256)"];
+
+        // State Management
+        let provider, signer, userAddress;
+        let currentNetworkKey = 'base';
+
+        // --- THEME & UI MANAGEMENT ---
+        function toggleTheme() {
+            const body = document.body;
+            const btn = document.getElementById('themeToggle');
+            if (body.getAttribute('data-theme') === 'light') {
+                body.removeAttribute('data-theme');
+                btn.innerText = 'Light Mode';
+            } else {
+                body.setAttribute('data-theme', 'light');
+                btn.innerText = 'Dark Mode';
+            }
+        }
+
+        // --- WEB3 CONNECTION ---
+        async function connectWallet() {
+            if (!window.ethereum) return alert("Please install MetaMask or Rabby Wallet.");
+            try {
+                provider = new ethers.BrowserProvider(window.ethereum);
+                const accounts = await provider.send("eth_requestAccounts", []);
+                signer = await provider.getSigner();
+                userAddress = accounts[0];
+                
+                document.getElementById('walletAddress').innerText = 
+                    userAddress.substring(0,6) + "..." + userAddress.substring(38);
+                document.getElementById('connectBtn').innerText = "Connected";
+                
+                await updateXPBalance();
+            } catch (error) {
+                console.error("Connection error:", error);
+            }
+        }
+
+        async function switchNetwork() {
+            currentNetworkKey = document.getElementById('networkSelect').value;
+            if (userAddress) await updateXPBalance();
+        }
+
+        async function updateXPBalance() {
+            if (!signer || !userAddress) return;
+            try {
+                const config = NETWORKS[currentNetworkKey];
+                const xpContract = new ethers.Contract(config.xp, XP_ABI, provider);
+                const balance = await xpContract.balanceOf(userAddress);
+                document.getElementById('xpBalance').innerText = ethers.formatEther(balance) + " XP";
+            } catch (error) {
+                console.error("Balance fetch error:", error);
+                document.getElementById('xpBalance').innerText = "Error";
+            }
+        }
+
+        // --- TRANSACTION FUNCTIONS ---
+        async function getTxOptions(actionType) {
+            const config = NETWORKS[currentNetworkKey];
+            if (!config.isPayable) return {}; // No value sent for ARC network
+            return { value: ethers.parseEther(config.fees[actionType]) };
+        }
+
+        async function executeTx(actionType) {
+            if (!signer) return alert("Please connect your wallet first!");
+            try {
+                const config = NETWORKS[currentNetworkKey];
+                const coreContract = new ethers.Contract(config.txFarmer, CORE_ABI, signer);
+                const options = await getTxOptions(actionType);
+                
+                let tx;
+                if (actionType === 'gm') tx = await coreContract.gm(options);
+                else if (actionType === 'gn') tx = await coreContract.gn(options);
+                else if (actionType === 'clicker') tx = await coreContract.clicker(options);
+
+                alert("Transaction sent to the network. Awaiting confirmation...");
+                await tx.wait();
+                alert("Transaction successful! Updating your XP balance.");
+                updateXPBalance();
+            } catch (error) {
+                console.error("Transaction error:", error);
+                alert("Transaction failed or was rejected by the user.");
+            }
+        }
+
+        async function deployCoin() {
+            if (!signer) return alert("Please connect your wallet first!");
+            const name = document.getElementById('coinName').value;
+            const sym = document.getElementById('coinSymbol').value;
+            const sup = document.getElementById('coinSupply').value;
+            if (!name || !sym || !sup) return alert("Please fill in the coin details.");
+
+            try {
+                const config = NETWORKS[currentNetworkKey];
+                const coreContract = new ethers.Contract(config.txFarmer, CORE_ABI, signer);
+                const options = await getTxOptions('deploy');
+                
+                // Converting supply to wei
+                const supplyWei = ethers.parseEther(sup.toString());
+                
+                alert("Deployment sent to the network. Awaiting confirmation...");
+                const tx = await coreContract.deploySimpleCoin(name, sym, supplyWei, options);
+                await tx.wait();
+                alert("Coin deployed successfully!");
+                updateXPBalance();
+            } catch (error) {
+                console.error("Deployment error:", error);
+                alert("Deployment failed.");
+            }
+        }
+
+        async function deployNFT() {
+            if (!signer) return alert("Please connect your wallet first!");
+            const name = document.getElementById('nftName').value;
+            const sym = document.getElementById('nftSymbol').value;
+            if (!name || !sym) return alert("Please fill in the NFT details.");
+
+            try {
+                const config = NETWORKS[currentNetworkKey];
+                const coreContract = new ethers.Contract(config.txFarmer, CORE_ABI, signer);
+                const options = await getTxOptions('deploy');
+                
+                alert("Deployment sent to the network. Awaiting confirmation...");
+                const tx = await coreContract.deploySimpleNFT(name, sym, options);
+                await tx.wait();
+                alert("NFT deployed successfully!");
+                updateXPBalance();
+            } catch (error) {
+                console.error("Deployment error:", error);
+                alert("Deployment failed.");
+            }
+        }
+
+        // Listen for wallet changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', () => window.location.reload());
+            window.ethereum.on('chainChanged', () => window.location.reload());
+        }
+    </script>
+</body>
+</html>
